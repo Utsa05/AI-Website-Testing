@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Login — TaskFlow{% endblock %}
+{% block content %}
+<section class="tf-form-card">
+  <h1>Log in</h1>
+
+  {% with flashed = get_flashed_messages(with_categories=true) %}
+    {% for category, message in flashed %}
+      <p class="tf-success" id="flash-message">{{ message }}</p>
+    {% endfor %}
+  {% endwith %}
+
+  {% if errors %}
+    <ul class="tf-error-list" id="form-errors">
+      {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('login') }}">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" placeholder="you@example.com"
+           value="{{ values.email }}" required autocomplete="email">
+
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" placeholder="Password"
+           required autocomplete="current-password">
+
+    <button type="submit" id="login-submit">Log in</button>
+  </form>
+
+  <p class="tf-hint">Demo account: demo@example.com / Password123!</p>
+</section>
+{% endblock %}

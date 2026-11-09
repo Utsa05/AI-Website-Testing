@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI App Tester</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <header class="app-header">
+      <h1>AI APP TESTER</h1>
+      <p class="subtitle">Point it at a running web app. It discovers the app, has AI plan and generate tests,
+        executes them in a real browser, and produces an evidence-backed developer report.</p>
+    </header>
+
+    <section class="card" id="run-card">
+      <form id="run-form">
+        <label for="api_key">OpenAI API Key</label>
+        <input type="password" id="api_key" name="api_key" placeholder="sk-..." autocomplete="off" required>
+        <p class="hint">Used only for this run. Never stored, saved to disk, or written to logs.</p>
+
+        <label for="model">OpenAI Model</label>
+        <input type="text" id="model" name="model" value="{{ default_model }}">
+        <p class="hint">Any current OpenAI model that supports structured JSON outputs (e.g. gpt-4o-mini, gpt-4o).</p>
+
+        <label for="target_url">Application URL</label>
+        <input type="text" id="target_url" name="target_url" placeholder="http://127.0.0.1:5050" required>
+
+        <label class="checkbox-row">
+          <input type="checkbox" id="headless" name="headless" checked>
+          Run browser headless
+        </label>
+
+        <button type="submit" id="run-btn">RUN AI TEST</button>
+      </form>
+      <p class="form-error" id="form-error"></p>
+    </section>
+
+    <section class="card" id="status-card" style="display:none;">
+      <h2>Pipeline status</h2>
+      <ol class="steps" id="steps-list">
+        <li data-step="0">Connect to application</li>
+        <li data-step="1">Discover application</li>
+        <li data-step="2">Generate AI tests</li>
+        <li data-step="3">Validate tests</li>
+        <li data-step="4">Execute browser actions</li>
+        <li data-step="5">Analyse evidence</li>
+        <li data-step="6">Build developer report</li>
+      </ol>
+      <p id="status-message" class="status-message"></p>
+      <p id="status-error" class="status-error" style="display:none;"></p>
+      <a id="report-link" class="btn-link" style="display:none;" href="#">Open full report &rarr;</a>
+    </section>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

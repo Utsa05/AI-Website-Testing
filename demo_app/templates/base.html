@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}TaskFlow{% endblock %}</title>
+  <!-- Explicit empty favicon: without this, browsers automatically
+       request /favicon.ico on every page load, which 404s since no
+       favicon file exists here — pure browser-noise unrelated to the
+       app's own behaviour. An empty data: URI tells the browser "there
+       is no icon" so it stops asking, instead of leaving a spurious 404
+       for the tester (or a human) to have to recognise as irrelevant. -->
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="tf-header">
+    <a class="tf-logo" href="{{ url_for('home') }}">TaskFlow</a>
+    <nav class="tf-nav">
+      <a href="{{ url_for('home') }}">Home</a>
+      <!-- Intentional bug: this points at a route that does not exist -->
+      <a href="/about">About</a>
+      <a href="{{ url_for('register') }}">Register</a>
+      <a href="{{ url_for('login') }}">Login</a>
+    </nav>
+  </header>
+
+  <main class="tf-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="tf-footer">
+    <span>Stay in the loop</span>
+    <!-- Intentional accessibility bug: icon-only control, no text,
+         no aria-label, no title -->
+    <button class="tf-icon-btn" onclick="return false;">&#9993;</button>
+  </footer>
+</body>
+</html>

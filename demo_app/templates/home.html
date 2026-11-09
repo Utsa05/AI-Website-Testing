@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}TaskFlow — Simple Task Management{% endblock %}
+{% block content %}
+<section class="tf-hero">
+  <h1>Get things done with TaskFlow</h1>
+  <p>A simple, no-nonsense task manager for small teams.</p>
+  <a class="tf-btn" href="{{ url_for('register') }}">Get started — it's free</a>
+</section>
+
+<section class="tf-features">
+  <div class="tf-feature">
+    <h3>Fast setup</h3>
+    <p>Create an account in seconds and start tracking tasks right away.</p>
+  </div>
+  <div class="tf-feature">
+    <h3>Simple by design</h3>
+    <p>No clutter. Just the essentials for staying on top of your work.</p>
+  </div>
+  <div class="tf-feature">
+    <h3>Built for teams</h3>
+    <p>Share progress with your team without extra tooling.</p>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI App Tester — Report {{ run_id }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="report-header">
+      <h1>Developer Report</h1>
+      <span class="badge {{ report.summary.run_status }}">{{ report.summary.run_status }}</span>
+      <span class="report-meta">Run {{ run_id }} &middot; {{ report.summary.target_url }}</span>
+    </div>
+    <p class="report-meta">Started {{ report.summary.started_at }} &middot; Finished {{ report.summary.finished_at }}
+      &middot; Model: {{ report.summary.model }}
+      &middot; Test plan source: {{ report.summary.test_plan_source }}
+      &middot; Analysis source: {{ report.summary.analysis_source }}
+      &middot; Visual (screenshot) analysis: {{ 'used' if report.summary.vision_used else 'not used (DOM/evidence-only)' }}</p>
+
+    <div class="stat-grid">
+      <div class="stat-box"><div class="num">{{ report.summary.pages_discovered }}</div><div class="label">Pages discovered</div></div>
+      <div class="stat-box"><div class="num">{{ report.summary.tests_generated }}</div><div class="label">Tests generated</div></div>
+      <div class="stat-box"><div class="num">{{ report.summary.tests_executed }}</div><div class="label">Tests executed</div></div>
+      <div class="stat-box passed"><div class="num">{{ report.summary.passed }}</div><div class="label">Passed</div></div>
+      <div class="stat-box failed"><div class="num">{{ report.summary.failed }}</div><div class="label">Failed</div></div>
+      <div class="stat-box"><div class="num">{{ report.summary.blocked }}</div><div class="label">Blocked</div></div>
+      <div class="stat-box"><div class="num">{{ report.summary.errored }}</div><div class="label">Errored</div></div>
+      <div class="stat-box bugs"><div class="num">{{ report.summary.bugs_found }}</div><div class="label">Bugs found</div></div>
+      <div class="stat-box improvements"><div class="num">{{ report.summary.improvements_found }}</div><div class="label">Improvements</div></div>
+    </div>
+
+    {% if errors_log %}
+    <div class="warn-box">
+      <strong>Pipeline notices:</strong>
+      <ul>
+        {% for e in errors_log %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="tests">Tests</button>
+      <button class="tab-btn" data-tab="bugs">Bugs</button>
+      <button class="tab-btn" data-tab="improvements">Improvements</button>
+      <button class="tab-btn" data-tab="assertion_issues">Assertion Issues</button>
+      <button class="tab-btn" data-tab="evidence">Evidence</button>
+      <button class="tab-btn" data-tab="report">Report</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="tab-panel active" data-panel="overview">
+      <p>This run discovered <strong>{{ report.summary.pages_discovered }}</strong> page(s) at
+        <strong>{{ report.summary.target_url }}</strong>, generated <strong>{{ report.summary.tests_generated }}</strong>
+        AI test(s) (source: {{ report.summary.test_plan_source }}), executed
+        <strong>{{ report.summary.tests_executed }}</strong> of them with a real Playwright browser session, and
+        found <strong>{{ report.summary.bugs_found }}</strong> bug(s),
+        <strong>{{ report.summary.improvements_found }}</strong> improvement(s), and
+        <strong>{{ report.summary.assertion_issues_found }}</strong> assertion issue(s) — cases where the
+        application behaved correctly but a generated test's assertion was too strict to confirm it —
+        each backed by execution evidence.</p>
+      <p>Use the tabs above to review individual test results, bugs, improvements, assertion issues, and
+        raw evidence (screenshots, console errors, network failures).</p>
+    </div>
+
+    <!-- TESTS -->
+    <div class="tab-panel" data-panel="tests">
+      {% if report.tests %}
+        {% for t in report.tests %}
+        <div class="test-result">
+          <div class="test-header">
+            <strong>{{ t.id }} — {{ t.name }}</strong>
+            <span class="badge {{ t.status }}">{{ t.status }}</span>
+          </div>
+          <div class="kv"><strong>Purpose:</strong> {{ t.purpose }}</div>
+          <div class="kv"><strong>Expected:</strong> {{ t.expected_outcome or t.expected }}</div>
+          <div class="kv"><strong>Actual:</strong>
+            {% if t.status == 'BLOCKED' %}{{ t.error }}
+            {% elif t.assertion_results %}{{ t.assertion_results|map(attribute='detail')|join(' / ') }}
+            {% else %}{{ t.error or '—' }}{% endif %}
+          </div>
+          <div class="kv"><strong>Result:</strong> {{ t.status }}</div>
+          <div class="kv"><strong>Final URL:</strong> {{ t.final_url }}</div>
+          <div class="kv"><strong>Duration:</strong> {{ t.duration_ms }} ms</div>
+          {% if t.error %}<div class="kv"><strong>Execution error:</strong> {{ t.error }}</div>{% endif %}
+
+          {% if t.assertion_results %}
+          <div class="kv"><strong>Assertions:</strong>
+            <ul class="evidence-list">
+              {% for a in t.assertion_results %}
+              <li>{{ a.type }} {{ a.value or a.selector or '' }} — {{ 'PASS' if a.passed else 'FAIL' }}: {{ a.detail }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+
+          {% if t.validation_warnings %}
+          <div class="warn-box">{{ t.validation_warnings|join(' ') }}</div>
+          {% endif %}
+
+          {% if t.steps_executed %}
+          <details class="steps-detail">
+            <summary>Steps executed ({{ t.steps_executed|length }})</summary>
+            {% for s in t.steps_executed %}
+            <div class="step-line {{ 'err' if s.status == 'error' else '' }}">
+              {{ s.action }} {{ s.selector or '' }} {{ s.value or '' }} — {{ s.status }}{% if s.error %} ({{ s.error }}){% endif %}
+            </div>
+            {% endfor %}
+          </details>
+          {% endif %}
+
+          <div class="screens">
+            {% if t.screenshot_before %}
+            <div class="screen-box">
+              <img src="{{ url_for('artifact', artifact_id=t.screenshot_before) }}" alt="Before screenshot for {{ t.id }}">
+              <a href="{{ url_for('artifact', artifact_id=t.screenshot_before) }}" target="_blank">Open full size (before)</a>
+            </div>
+            {% endif %}
+            {% if t.screenshot_after %}
+            <div class="screen-box">
+              <img src="{{ url_for('artifact', artifact_id=t.screenshot_after) }}" alt="After screenshot for {{ t.id }}">
+              <a href="{{ url_for('artifact', artifact_id=t.screenshot_after) }}" target="_blank">Open full size (after)</a>
+            </div>
+            {% endif %}
+          </div>
+
+          {% if t.console_errors %}
+          <div class="kv"><strong>Console errors:</strong>
+            <ul class="evidence-list">{% for c in t.console_errors %}<li>{{ c.type }}: {{ c.text }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if t.failed_requests %}
+          <div class="kv"><strong>Failed/error network requests:</strong>
+            <ul class="evidence-list">{% for n in t.failed_requests %}<li>{{ n.status or n.failure }} — {{ n.url }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="empty-state">No tests were executed.</p>
+      {% endif %}
+    </div>
+
+    <!-- BUGS -->
+    <div class="tab-panel" data-panel="bugs">
+      {% if report.bugs %}
+        {% for f in report.bugs %}
+        <div class="finding">
+          <div class="finding-header">
+            <strong>{{ f.title }}</strong>
+            <span>
+              <span class="badge BUG">BUG</span>
+              <span class="badge sev-{{ f.severity }}">{{ f.severity }}</span>
+            </span>
+          </div>
+          <div class="kv"><strong>Confidence:</strong> {{ (f.confidence * 100) | round(0) }}%
+            <span class="confidence-bar-wrap"><span class="confidence-bar" style="width: {{ (f.confidence * 100) | round(0) }}%;"></span></span>
+          </div>
+          <div class="kv"><strong>Route:</strong> {{ f.route }} &middot; <strong>Test:</strong> {{ f.test_id }}</div>
+          <div class="kv"><strong>Expected:</strong> {{ f.evidence_chain.expected_outcome }}
+            <span class="badge sev-LOW">source: {{ f.evidence_chain.expected_outcome_source }}</span></div>
+          {% if f.evidence_chain.executed_actions %}
+          <div class="kv"><strong>Executed actions:</strong>
+            <ol class="evidence-list">{% for a in f.evidence_chain.executed_actions %}<li>{{ a }}</li>{% endfor %}</ol>
+          </div>
+          {% endif %}
+          {% if f.evidence_chain.assertions %}
+          <div class="kv"><strong>Assertion(s):</strong>
+            <ul class="evidence-list">{% for a in f.evidence_chain.assertions %}<li>{{ a }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          <div class="kv"><strong>Actual:</strong> {{ f.evidence_chain.actual_result }}</div>
+          {% if f.reproduction_steps %}
+          <div class="kv"><strong>Reproduction steps:</strong>
+            <ol class="evidence-list">{% for s in f.reproduction_steps %}<li>{{ s }}</li>{% endfor %}</ol>
+          </div>
+          {% endif %}
+          {% if f.evidence_chain.evidence_resolved %}
+          <div class="kv"><strong>Evidence:</strong>
+            <ul class="evidence-list">{% for e in f.evidence_chain.evidence_resolved %}<li>{{ e }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if f.evidence_chain.screenshot_artifact %}
+          <div class="kv"><strong>Screenshot:</strong>
+            <a href="/artifact/{{ f.evidence_chain.screenshot_artifact }}" target="_blank">
+              <img class="screenshot-thumb" src="/artifact/{{ f.evidence_chain.screenshot_artifact }}" alt="Evidence screenshot">
+            </a>
+            <div><a href="/artifact/{{ f.evidence_chain.screenshot_artifact }}" target="_blank">Open full size</a></div>
+          </div>
+          {% endif %}
+          <div class="kv"><strong>Conclusion / Recommendation:</strong> {{ f.evidence_chain.conclusion or f.recommendation }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="empty-state">No bugs found in this run.</p>
+      {% endif %}
+    </div>
+
+    <!-- IMPROVEMENTS -->
+    <div class="tab-panel" data-panel="improvements">
+      {% if report.improvements %}
+        {% for f in report.improvements %}
+        <div class="finding">
+          <div class="finding-header">
+            <strong>{{ f.title }}</strong>
+            <span>
+              <span class="badge IMPROVEMENT">IMPROVEMENT</span>
+              <span class="badge sev-{{ f.severity }}">{{ f.severity }}</span>
+            </span>
+          </div>
+          <div class="kv"><strong>Confidence:</strong> {{ (f.confidence * 100) | round(0) }}%
+            <span class="confidence-bar-wrap"><span class="confidence-bar" style="width: {{ (f.confidence * 100) | round(0) }}%;"></span></span>
+          </div>
+          <div class="kv"><strong>Route:</strong> {{ f.route }} &middot; <strong>Test:</strong> {{ f.test_id }}</div>
+          <div class="kv"><strong>Expected:</strong> {{ f.evidence_chain.expected_outcome }}
+            <span class="badge sev-LOW">source: {{ f.evidence_chain.expected_outcome_source }}</span></div>
+          <div class="kv"><strong>Actual:</strong> {{ f.evidence_chain.actual_result }}</div>
+          {% if f.evidence_chain.evidence_resolved %}
+          <div class="kv"><strong>Evidence:</strong>
+            <ul class="evidence-list">{% for e in f.evidence_chain.evidence_resolved %}<li>{{ e }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if f.evidence_chain.screenshot_artifact %}
+          <div class="kv"><strong>Screenshot:</strong>
+            <a href="/artifact/{{ f.evidence_chain.screenshot_artifact }}" target="_blank">
+              <img class="screenshot-thumb" src="/artifact/{{ f.evidence_chain.screenshot_artifact }}" alt="Evidence screenshot">
+            </a>
+          </div>
+          {% endif %}
+          <div class="kv"><strong>Conclusion / Recommendation:</strong> {{ f.evidence_chain.conclusion or f.recommendation }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="empty-state">No improvements found in this run.</p>
+      {% endif %}
+    </div>
+
+    <!-- ASSERTION ISSUES -->
+    <div class="tab-panel" data-panel="assertion_issues">
+      {% if report.assertion_issues %}
+        <p class="empty-state" style="margin-bottom:12px;">The application behaved correctly here — the
+          generated test's assertion was too strict/specific to confirm it (e.g. it checked for one exact
+          message string). Not a bug; the test's wording may need adjusting.</p>
+        {% for f in report.assertion_issues %}
+        <div class="finding">
+          <div class="finding-header">
+            <strong>{{ f.title }}</strong>
+            <span>
+              <span class="badge sev-MEDIUM">ASSERTION ISSUE</span>
+            </span>
+          </div>
+          <div class="kv"><strong>Route:</strong> {{ f.route }} &middot; <strong>Test:</strong> {{ f.test_id }}</div>
+          <div class="kv"><strong>Expected (as asserted):</strong> {{ f.evidence_chain.expected_outcome }}
+            <span class="badge sev-LOW">source: {{ f.evidence_chain.expected_outcome_source }}</span></div>
+          <div class="kv"><strong>Actual:</strong> {{ f.evidence_chain.actual_result }}</div>
+          {% if f.evidence_chain.evidence_resolved %}
+          <div class="kv"><strong>Evidence:</strong>
+            <ul class="evidence-list">{% for e in f.evidence_chain.evidence_resolved %}<li>{{ e }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if f.evidence_chain.screenshot_artifact %}
+          <div class="kv"><strong>Screenshot:</strong>
+            <a href="/artifact/{{ f.evidence_chain.screenshot_artifact }}" target="_blank">
+              <img class="screenshot-thumb" src="/artifact/{{ f.evidence_chain.screenshot_artifact }}" alt="Evidence screenshot">
+            </a>
+          </div>
+          {% endif %}
+          <div class="kv"><strong>Why not a bug:</strong> {{ f.evidence_chain.conclusion or f.recommendation }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="empty-state">No assertion issues in this run.</p>
+      {% endif %}
+    </div>
+
+    <!-- EVIDENCE -->
+    <div class="tab-panel" data-panel="evidence">
+      {% if report.tests %}
+        <div class="screens">
+          {% for t in report.tests %}
+            {% if t.screenshot_before %}
+            <div class="screen-box">
+              <img src="{{ url_for('artifact', artifact_id=t.screenshot_before) }}" alt="{{ t.id }} before">
+              <div>{{ t.id }} — before</div>
+              <a href="{{ url_for('artifact', artifact_id=t.screenshot_before) }}" target="_blank">Open full size</a>
+            </div>
+            {% endif %}
+            {% if t.screenshot_after %}
+            <div class="screen-box">
+              <img src="{{ url_for('artifact', artifact_id=t.screenshot_after) }}" alt="{{ t.id }} after">
+              <div>{{ t.id }} — after</div>
+              <a href="{{ url_for('artifact', artifact_id=t.screenshot_after) }}" target="_blank">Open full size</a>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty-state">No evidence captured.</p>
+      {% endif %}
+    </div>
+
+    <!-- REPORT (readable narrative) -->
+    <div class="tab-panel" data-panel="report">
+      <h3>Summary</h3>
+      <p>
+        Target: {{ report.summary.target_url }}<br>
+        Run ID: {{ report.summary.run_id }}<br>
+        Pages discovered: {{ report.summary.pages_discovered }}<br>
+        Tests generated / executed: {{ report.summary.tests_generated }} / {{ report.summary.tests_executed }}<br>
+        Passed / Failed / Blocked / Errored: {{ report.summary.passed }} / {{ report.summary.failed }} /
+        {{ report.summary.blocked }} / {{ report.summary.errored }}<br>
+        Bugs found: {{ report.summary.bugs_found }} &middot; Improvements found: {{ report.summary.improvements_found }}
+      </p>
+      <h3>Bugs ({{ report.bugs|length }})</h3>
+      {% for f in report.bugs %}
+      <p><strong>{{ loop.index }}. {{ f.title }}</strong> ({{ f.severity }}, {{ (f.confidence*100)|round(0) }}% confidence)<br>
+        Route: {{ f.route }} — Expected: {{ f.expected }} — Actual: {{ f.actual }}<br>
+        Recommendation: {{ f.recommendation }}</p>
+      {% else %}<p class="empty-state">None.</p>{% endfor %}
+      <h3>Improvements ({{ report.improvements|length }})</h3>
+      {% for f in report.improvements %}
+      <p><strong>{{ loop.index }}. {{ f.title }}</strong> ({{ f.severity }}, {{ (f.confidence*100)|round(0) }}% confidence)<br>
+        Route: {{ f.route }} — Recommendation: {{ f.recommendation }}</p>
+      {% else %}<p class="empty-state">None.</p>{% endfor %}
+    </div>
+
+  </div>
+</div>
+<script>
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelector(`.tab-panel[data-panel="${btn.dataset.tab}"]`).classList.add("active");
+  });
+});
+</script>
+</body>
+</html>

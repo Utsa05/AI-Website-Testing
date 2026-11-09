@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Register — TaskFlow{% endblock %}
+{% block content %}
+<section class="tf-form-card">
+  <h1>Create your account</h1>
+
+  {% if errors %}
+    <ul class="tf-error-list" id="form-errors">
+      {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('register') }}">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" placeholder="ai_test_user"
+           value="{{ values.username }}" required minlength="3" autocomplete="username">
+
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" placeholder="you@example.com"
+           value="{{ values.email }}" required autocomplete="email">
+
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" placeholder="At least 8 characters"
+           required minlength="8" autocomplete="new-password">
+
+    <label for="confirm_password">Confirm password</label>
+    <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm password"
+           required minlength="8" autocomplete="new-password">
+
+    <button type="submit" id="register-submit">Create account</button>
+  </form>
+</section>
+{% endblock %}

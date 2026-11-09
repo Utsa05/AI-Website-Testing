@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Report pending</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h2>Report not ready yet</h2>
+    <p>Run <strong>{{ run_id }}</strong> is still in progress or did not complete.
+      Go back to the <a href="/">main page</a> to check its status.</p>
+  </div>
+</div>
+</body>
+</html>
